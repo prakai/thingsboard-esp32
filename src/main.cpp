@@ -6,22 +6,23 @@
 void WiFi_task(void *pvParameters);
 void ThingsBoard_task(void *pvParameters);
 
-//
-// ThingsBoard variables and callbacks
-//
-constexpr uint8_t MAX_RPC_SUBSCRIPTIONS = 3U;
-constexpr uint8_t MAX_RPC_RESPONSE = 5U;
-constexpr uint8_t MAX_ATTRIBUTE_REQUESTS = 2U;
-constexpr uint8_t MAX_SHARED_ATTRIBUTES_UPDATE = 3U;
-constexpr size_t MAX_ATTRIBUTES = 3U;
+// //
+// // ThingsBoard variables and callbacks
+// //
+// constexpr uint8_t MAX_RPC_SUBSCRIPTIONS = 3U;
+// constexpr uint8_t MAX_RPC_RESPONSE = 5U;
+// constexpr uint8_t MAX_ATTRIBUTE_REQUESTS = 2U;
+// constexpr uint8_t MAX_SHARED_ATTRIBUTES_UPDATE = 3U;
+// constexpr size_t MAX_ATTRIBUTES = 3U;
 
-// Initialize used ThingsBoard APIs
-Server_Side_RPC<MAX_RPC_SUBSCRIPTIONS, MAX_RPC_RESPONSE> ThingsBoard_rpc;
-Attribute_Request<MAX_ATTRIBUTE_REQUESTS, MAX_ATTRIBUTES> ThingsBoard_attribute_request;
-Shared_Attribute_Update<MAX_SHARED_ATTRIBUTES_UPDATE, MAX_ATTRIBUTES> ThingsBoard_rpc_shared_update;
+// // Initialize used ThingsBoard APIs
+// Server_Side_RPC<MAX_RPC_SUBSCRIPTIONS, MAX_RPC_RESPONSE> ThingsBoard_rpc;
+// Attribute_Request<MAX_ATTRIBUTE_REQUESTS, MAX_ATTRIBUTES> ThingsBoard_attribute_request;
+// Shared_Attribute_Update<MAX_SHARED_ATTRIBUTES_UPDATE, MAX_ATTRIBUTES>
+// ThingsBoard_rpc_shared_update;
 
-const std::array<IAPI_Implementation *, 3U> APIs = {
-    &ThingsBoard_rpc, &ThingsBoard_attribute_request, &ThingsBoard_rpc_shared_update};
+// const std::array<IAPI_Implementation *, 3U> APIs = {
+//     &ThingsBoard_rpc, &ThingsBoard_attribute_request, &ThingsBoard_rpc_shared_update};
 
 //
 // Main setup
@@ -86,10 +87,9 @@ void ThingsBoard_task(void *pvParameters)
 
     ThingsBoard_setup();
 
-    ThingsBoard_client.Subscribe_API_Implementation(ThingsBoard_rpc);
-    ThingsBoard_client.Subscribe_API_Implementation(ThingsBoard_attribute_request);
-    ThingsBoard_client.Subscribe_API_Implementation(ThingsBoard_rpc_shared_update);
-    // ThingsBoard_client.Subscribe_API_Implementations()
+    // ThingsBoard_client.Subscribe_API_Implementation(ThingsBoard_rpc);
+    // ThingsBoard_client.Subscribe_API_Implementation(ThingsBoard_attribute_request);
+    // ThingsBoard_client.Subscribe_API_Implementation(ThingsBoard_rpc_shared_update);
 
     for (;;) {
         vTaskDelay(500 / portTICK_PERIOD_MS);
