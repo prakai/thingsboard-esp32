@@ -99,18 +99,18 @@ void ThingsBoard_task(void *pvParameters)
         }
 
         if (!ThingsBoard_client.connected()) {
-            Serial.println("Connecting to ThingsBoard...");
+            Serial.println("Connecting to ThingsBoard");
             ThingsBoard_client.connect(ThingsBoard_server.c_str(), ThingsBoard_token.c_str(),
                                        ThingsBoard_port);
         }
         if (ThingsBoard_client.connected() != lastThingsBoardStatus) {
-            lastThingsBoardStatus = ThingsBoard_client.connected();
-            if (lastThingsBoardStatus) {
-                Serial.println("Connected to ThingsBoard.");
+            if (ThingsBoard_client.connected()) {
+                Serial.println("Connected to ThingsBoard");
             } else {
                 Serial.println("Disconnected from ThingsBoard.");
             }
         }
+        lastThingsBoardStatus = ThingsBoard_client.connected();
 
         ThingsBoard_client.loop();
     }
@@ -126,7 +126,9 @@ void loop()
 
     static unsigned long _lastSentAttributes = 0;
     static unsigned long _lastSentTelemitry = 0;
-    if (ThingsBoard_client.connected()) {
+    if (!ThingsBoard_client.connected()) {
+        _lastSentTelemitry = 0;
+    } else {
         if (_lastSentAttributes == 0) {  //|| millis() - _lastSentAttributes > 60000) {
             _lastSentAttributes = millis();
             String hwVersion = "A.0.1";
