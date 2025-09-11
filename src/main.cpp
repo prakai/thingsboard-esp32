@@ -69,10 +69,6 @@ void ThingsBoard_task(void *pvParameters)
 
     ThingsBoard_setup();
 
-    // ThingsBoard_client.Subscribe_API_Implementation(ThingsBoard_rpc);
-    // ThingsBoard_client.Subscribe_API_Implementation(ThingsBoard_attribute_request);
-    // ThingsBoard_client.Subscribe_API_Implementation(ThingsBoard_rpc_shared_update);
-
     for (;;) {
         vTaskDelay(500 / portTICK_PERIOD_MS);
 
