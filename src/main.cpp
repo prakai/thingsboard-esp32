@@ -129,27 +129,27 @@ void loop()
     if (ThingsBoard_client.connected()) {
         if (_lastSentAttributes == 0) {  //|| millis() - _lastSentAttributes > 60000) {
             _lastSentAttributes = millis();
-            String hw_version = "A.0.1";
-            String hw_serial = "SN-0001";
-            String fw_version = "A.0.1";
+            String hwVersion = "A.0.1";
+            String hwSerial = "SN-0001";
+            String fwVersion = "A.0.1";
             Serial.print("Send attributes: ");
-            Serial.print(hw_version);
+            Serial.print(hwVersion);
             Serial.print(", ");
-            Serial.print(hw_serial);
+            Serial.print(hwSerial);
             Serial.print(", ");
-            Serial.print(fw_version);
+            Serial.print(fwVersion);
             Serial.print(", ");
             Serial.print(WiFi_ssid);
             Serial.print(", ");
             Serial.print(WiFi.macAddress());
             Serial.print(", ");
             Serial.println(WiFi.localIP());
-            ThingsBoard_client.sendAttributeData("hw_version", hw_version.c_str());
-            ThingsBoard_client.sendAttributeData("hw_serial", hw_serial.c_str());
-            ThingsBoard_client.sendAttributeData("fw_version", fw_version.c_str());
+            ThingsBoard_client.sendAttributeData("hwVersion", hwVersion.c_str());
+            ThingsBoard_client.sendAttributeData("hwSerial", hwSerial.c_str());
+            ThingsBoard_client.sendAttributeData("fwVersion", fwVersion.c_str());
             ThingsBoard_client.sendAttributeData("ssid", WiFi_ssid.c_str());
-            ThingsBoard_client.sendAttributeData("mac_address", String(WiFi.macAddress()).c_str());
-            ThingsBoard_client.sendAttributeData("ip_address",
+            ThingsBoard_client.sendAttributeData("macAddress", String(WiFi.macAddress()).c_str());
+            ThingsBoard_client.sendAttributeData("ipAddress",
                                                  String(WiFi.localIP().toString()).c_str());
         }
         if (_lastSentTelemitry == 0 || millis() - _lastSentTelemitry > 30000) {
