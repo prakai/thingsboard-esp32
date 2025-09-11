@@ -4,6 +4,10 @@
 #include <Arduino.h>
 
 //
+// Copy or rename this file to Configuration.h and fill in the following fields
+//
+
+//
 // WiFi configuration
 //
 String WiFi_ssid = "LOCAL_WIFI_SSID";
