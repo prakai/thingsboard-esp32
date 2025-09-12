@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <EasyButton.h>
 
 #include "ThingsBoard_Manager.h"
 #include "WiFi_Manager.h"
@@ -7,12 +8,32 @@ void WiFi_task(void *pvParameters);
 void ThingsBoard_task(void *pvParameters);
 
 //
+// Buttons configuration
+//
+#define BUTTON_PIN 0
+EasyButton *button = nullptr;
+
+#define button_long_press_time 2000  // ms
+
+void button_ISR_handler(void);
+void button_handler_onPressed(void);
+void button_handler_onPressedFor(void);
+
+//
 // Main setup
 //
 void setup()
 {
     Serial.begin(115200);
     Serial.println();
+
+    button = new EasyButton(BUTTON_PIN);
+    button->begin();
+    button->onPressed(button_handler_onPressed);
+    button->onPressedFor(button_long_press_time, button_handler_onPressedFor);
+    if (button->supportsInterrupt()) {
+        button->enableInterrupt(button_ISR_handler);
+    }
 
     // Create tasks for WiFi
     xTaskCreate(WiFi_task,   /* Task function. */
@@ -96,11 +117,31 @@ void ThingsBoard_task(void *pvParameters)
 }
 
 //
+// Button handling
+//
+void button_ISR_handler(void)
+{
+    button->read();
+}
+void button_handler_onPressed(void)
+{
+    Serial.println("Button button has been pressed!");
+}
+void button_handler_onPressedFor(void)
+{
+    Serial.print("Button button has been pressed for ");
+    Serial.print(button_long_press_time / 1000);
+    Serial.println(" secs!");
+}
+
+//
 // Main loop
 //
 void loop()
 {
-    // put your main code here, to run repeatedly:
+    if (button->supportsInterrupt()) {
+        button->update();
+    }
 
     static unsigned long _lastSentAttributes = 0;
     static unsigned long _lastSentTelemitry = 0;
