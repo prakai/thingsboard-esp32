@@ -59,15 +59,15 @@ void WiFi_connect()
 void WiFi_onEvent(WiFiEvent_t event)
 {
     switch (event) {
-        case SYSTEM_EVENT_STA_CONNECTED:
+        case WIFI_EVENT_STA_CONNECTED:
             Serial.println("WiFi connected.");
             break;
-        case SYSTEM_EVENT_STA_GOT_IP:
+        case IP_EVENT_STA_GOT_IP:
             Serial.print("IP address: ");
             Serial.println(WiFi.localIP());
             lastWiFiAttemps = 0;
             break;
-        case SYSTEM_EVENT_STA_DISCONNECTED:
+        case WIFI_EVENT_STA_DISCONNECTED:
             Serial.println("WiFi disconnected or failed.");
             lastWiFiAttemps++;
             break;
