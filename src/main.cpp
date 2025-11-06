@@ -4,14 +4,14 @@
 #include "ThingsBoard_Manager.h"
 #include "WiFi_Manager.h"
 
-void WiFi_task(void *pvParameters);
-void ThingsBoard_task(void *pvParameters);
+void WiFi_task(void* pvParameters);
+void ThingsBoard_task(void* pvParameters);
 
 //
 // Buttons configuration
 //
 #define BUTTON_PIN 0
-EasyButton *button = nullptr;
+EasyButton* button = nullptr;
 
 #define button_long_press_time 2000  // ms
 
@@ -57,7 +57,7 @@ void setup()
 //
 // Task of WiFi connection management
 //
-void WiFi_task(void *pvParameters)
+void WiFi_task(void* pvParameters)
 {
     Serial.println("WiFi_task()");
 
@@ -84,7 +84,7 @@ void WiFi_task(void *pvParameters)
 //
 // Task of ThingsBoard connection management
 //
-void ThingsBoard_task(void *pvParameters)
+void ThingsBoard_task(void* pvParameters)
 {
     Serial.println("ThingsBoard_task()");
 
