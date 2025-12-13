@@ -69,10 +69,6 @@ constexpr char X509_CERTIFICATE_CRED_TYPE[] = "X509_CERTIFICATE";
 
 // Server Side RPC related constants
 constexpr char RPC_SWITCH_SET_METHOD[] = "switch_set";
-// constexpr const char RPC_TEMPERATURE_METHOD[] = "example_set_temperature";
-// constexpr const char RPC_SWITCH_METHOD[] = "example_set_switch";
-// constexpr const char RPC_TEMPERATURE_KEY[] = "temp";
-// constexpr char RPC_SWICH_STATE_0_KEY[] = "switch_state_0";
 
 // Shared Attribute Update related constants
 constexpr char SWITCH_STATE_0_KEY[] = "switch_state_0";
@@ -81,11 +77,6 @@ constexpr char SWITCH_STATE_2_KEY[] = "switch_state_2";
 constexpr char SWITCH_STATE_3_KEY[] = "switch_state_3";
 constexpr char SWITCH_STATE_4_KEY[] = "switch_state_4";
 constexpr char SWITCH_STATE_5_KEY[] = "switch_state_5";
-// constexpr char FW_VER_KEY[] = "fw_version";
-// constexpr char FW_TITLE_KEY[] = "fw_title";
-// constexpr char FW_CHKS_KEY[] = "fw_checksum";
-// constexpr char FW_CHKS_ALGO_KEY[] = "fw_checksum_algorithm";
-// constexpr char FW_SIZE_KEY[] = "fw_size";
 
 const std::array<IAPI_Implementation*, 4U> APIs = {
     &prov, &ThingsBoard_rpc, &ThingsBoard_attribute_request, &ThingsBoard_shared_update};
@@ -302,17 +293,8 @@ void ThingsBoard_connect()
                 Serial.println("Subscribing for RPC...");
                 const std::array<RPC_Callback, MAX_RPC_SUBSCRIPTIONS> callbacks = {
                     // Requires additional memory in the JsonDocument for the JsonDocument that
-                    // will
-                    // be copied into the response
+                    // will be copied into the response
                     RPC_Callback{RPC_SWITCH_SET_METHOD, processSwitchState},
-                    // Requires additional memory in the JsonDocument for 5 key-value pairs that
-                    // do
-                    // not copy their value into the JsonDocument itself
-                    // RPC_Callback{RPC_TEMPERATURE_METHOD, processTemperatureChange},
-                    // Internal size can be 0, because if we use the JsonDocument as a
-                    // JsonVariant
-                    // and then set the value we do not require additional memory
-                    // RPC_Callback{RPC_SWITCH_METHOD, processSwitchChange}
                 };
                 // Perform a subscription. All consequent data processing will happen in
                 // processTemperatureChange() and processSwitchChange() functions,
@@ -344,7 +326,6 @@ void ThingsBoard_connect()
                 sharedAttributeSubscribed = true;
             }
         }
-        // }
     }
 }
 #endif  // _THINGSBOARD_MANAGER_H
