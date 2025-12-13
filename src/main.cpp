@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <EasyButton.h>
+#include <Preferences.h>
 
 #include "ThingsBoard_Manager.h"
 #include "WiFi_Manager.h"
@@ -10,27 +11,29 @@ void ThingsBoard_task(void* pvParameters);
 //
 // Buttons configuration
 //
-#define BUTTON_PIN 0
+#define BUTTON_PIN 9
 EasyButton* button = nullptr;
 
-#define button_long_press_time 2000  // ms
+constexpr uint64_t BUTTON_LONG_PRESS_TIME = 2000;  // 2 seconds
 
 void button_ISR_handler(void);
 void button_handler_onPressed(void);
 void button_handler_onPressedFor(void);
+
+bool switch_state[6] = {false, false, false, false, false, false};
 
 //
 // Main setup
 //
 void setup()
 {
-    Serial.begin(115200);
+    Serial.begin(SERIAL_BAUDRATE);
     Serial.println();
 
     button = new EasyButton(BUTTON_PIN);
     button->begin();
     button->onPressed(button_handler_onPressed);
-    button->onPressedFor(button_long_press_time, button_handler_onPressedFor);
+    button->onPressedFor(BUTTON_LONG_PRESS_TIME, button_handler_onPressedFor);
     if (button->supportsInterrupt()) {
         button->enableInterrupt(button_ISR_handler);
     }
@@ -166,6 +169,51 @@ void ThingsBoard_task(void* pvParameters)
     vTaskDelete(NULL);
 }
 
+/// @brief Processes function for RPC call "switch_set"
+/// JsonVariantConst is a JSON variant, that can be queried using operator[]
+/// See https://arduinojson.org/v5/api/jsonvariant/subscript/ for more details
+/// @param json Data containing the rpc data that was called and its current value
+/// @param response Data containgin the response value, any number, string or json, that should be
+/// sent to the cloud. Useful for getMethods
+void processSwitchState(const JsonVariantConst& json, JsonDocument& response)
+{
+    Serial.println("Received the switch set method");
+
+    u8_t i = 0;
+
+    char sprintf_buffer[] = "switch_state_x";
+    sprintf(sprintf_buffer, "switch_state_%d", i);
+
+    // Process json
+    switch_state[i] = json[sprintf_buffer];
+
+    Serial.printf("Switch %d state: ", i);
+    Serial.println(switch_state[i]);
+
+    ThingsBoard_client.sendAttributeData(sprintf_buffer, switch_state[i]);
+
+    // response.set(22.02);
+}
+
+/// @brief Update callback that will be called as soon as one of the provided shared attributes
+/// changes value, if none are provided we subscribe to any shared attribute change instead
+/// @param json Data containing the shared attributes that were changed and their current value
+void processSharedAttributeUpdate(const JsonObjectConst& json)
+{
+    for (auto it = json.begin(); it != json.end(); ++it) {
+        String key = it->key().c_str();
+        if (key.startsWith("switch_state_")) {
+            Serial.println(it->key().c_str());
+            Serial.println(it->value().as<boolean>() ? "true" : "false");
+            int i = key.substring(strlen("switch_state_")).toInt();
+            switch_state[i] = it->value().as<boolean>();
+            continue;
+        }
+        // Shared attributes have to be parsed by their type.
+        // Serial.println(it->value().as<const char*>());
+    }
+}
+
 //
 // Button handling
 //
@@ -176,12 +224,25 @@ void button_ISR_handler(void)
 void button_handler_onPressed(void)
 {
     Serial.println("Button button has been pressed!");
+
+    if (currentThingsBoardConnectionStatus) {
+        u8_t i = 0;
+        switch_state[i] = !switch_state[i];
+
+        char sprintf_buffer[] = "switch_state_x";
+        sprintf(sprintf_buffer, "switch_state_%d", i);
+
+        Serial.printf("Send %s: ", sprintf_buffer);
+        Serial.println(switch_state[i]);
+        ThingsBoard_client.sendAttributeData(sprintf_buffer, switch_state[i]);
+    }
 }
 void button_handler_onPressedFor(void)
 {
     Serial.print("Button button has been pressed for ");
-    Serial.print(button_long_press_time / 1000);
+    Serial.print(BUTTON_LONG_PRESS_TIME / 1000);
     Serial.println(" secs!");
+    // ESP.restart();
 }
 
 //

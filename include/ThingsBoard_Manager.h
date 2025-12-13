@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <Arduino_MQTT_Client.h>
 #include <Attribute_Request.h>
+#include <Preferences.h>
 #include <Provision.h>
 #include <Server_Side_RPC.h>
 #include <Shared_Attribute_Update.h>
@@ -18,8 +19,17 @@ String deviceId = "";
 String deviceMac = "";
 String deviceModel = "";
 
-#define THINGSBOARD_CONNECT_ATTEMPS_TIMOUT 10000
-#define THINGSBOARD_ATTEMPS_MAX 5
+Preferences ThingsBoard_pref;
+const char* PREFS_NAMESPACE = "tb_prefs";
+const char* PREFS_DEVICE_ID = "dev_id";
+const char* PREFS_DEVICE_USER = "dev_user";
+const char* PREFS_DEVICE_PASS = "dev_pass";
+
+// Initialize underlying client, used to establish a connection
+WiFiClient WiFi_client;
+
+constexpr uint64_t THINGSBOARD_CONNECT_ATTEMPS_TIMOUT = 10000;  // 10 seconds
+constexpr uint8_t THINGSBOARD_ATTEMPS_MAX = 5;
 
 constexpr uint16_t MAX_MESSAGE_RECEIVE_SIZE = 1024U;
 constexpr uint16_t MAX_MESSAGE_SEND_SIZE = 1024U;
@@ -29,20 +39,17 @@ constexpr uint64_t REQUEST_TIMEOUT_MICROSECONDS = 5000U * 1000U;
 uint8_t currentThingsBoardConnectionStatus = 0;
 uint8_t lastThingsBoardConnectionStatus = 0;
 
-// Initialize underlying client, used to establish a connection
-WiFiClient WiFi_client;
-
 // Initalize the Mqtt client instance
 Arduino_MQTT_Client MQTT_client(WiFi_client);
 
 //
 // ThingsBoard variables and callbacks
 //
-constexpr uint8_t MAX_RPC_SUBSCRIPTIONS = 3U;
-constexpr uint8_t MAX_RPC_RESPONSE = 5U;
-constexpr uint8_t MAX_ATTRIBUTE_REQUESTS = 2U;
-constexpr uint8_t MAX_SHARED_ATTRIBUTES_UPDATE = 3U;
-constexpr size_t MAX_ATTRIBUTES = 3U;
+constexpr uint8_t MAX_RPC_SUBSCRIPTIONS = 4U;
+constexpr uint8_t MAX_RPC_RESPONSE = 8U;
+constexpr uint8_t MAX_ATTRIBUTE_REQUESTS = 8U;
+constexpr uint8_t MAX_SHARED_ATTRIBUTES_UPDATE = 8U;
+constexpr uint8_t MAX_ATTRIBUTES = 8U;
 
 // Initialize used ThingsBoard APIs
 Provision<> prov;
@@ -56,21 +63,24 @@ constexpr char CREDENTIALS_VALUE[] = "credentialsValue";
 constexpr char CLIENT_ID[] = "clientId";
 constexpr char CLIENT_PASSWORD[] = "password";
 constexpr char CLIENT_USERNAME[] = "userName";
-constexpr char TEMPERATURE_KEY[] = "temperature";
-constexpr char HUMIDITY_KEY[] = "humidity";
 constexpr char ACCESS_TOKEN_CRED_TYPE[] = "ACCESS_TOKEN";
 constexpr char MQTT_BASIC_CRED_TYPE[] = "MQTT_BASIC";
 constexpr char X509_CERTIFICATE_CRED_TYPE[] = "X509_CERTIFICATE";
 
 // Server Side RPC related constants
-constexpr const char RPC_POWER_SET_METHOD[] = "power_set";
+constexpr char RPC_SWITCH_SET_METHOD[] = "switch_set";
 // constexpr const char RPC_TEMPERATURE_METHOD[] = "example_set_temperature";
 // constexpr const char RPC_SWITCH_METHOD[] = "example_set_switch";
 // constexpr const char RPC_TEMPERATURE_KEY[] = "temp";
-constexpr const char RPC_POWER_SET_KEY[] = "power_state";
+// constexpr char RPC_SWICH_STATE_0_KEY[] = "switch_state_0";
 
 // Shared Attribute Update related constants
-constexpr char POWER_STATE_KEY[] = "power_state";
+constexpr char SWITCH_STATE_0_KEY[] = "switch_state_0";
+constexpr char SWITCH_STATE_1_KEY[] = "switch_state_1";
+constexpr char SWITCH_STATE_2_KEY[] = "switch_state_2";
+constexpr char SWITCH_STATE_3_KEY[] = "switch_state_3";
+constexpr char SWITCH_STATE_4_KEY[] = "switch_state_4";
+constexpr char SWITCH_STATE_5_KEY[] = "switch_state_5";
 // constexpr char FW_VER_KEY[] = "fw_version";
 // constexpr char FW_TITLE_KEY[] = "fw_title";
 // constexpr char FW_CHKS_KEY[] = "fw_checksum";
@@ -87,7 +97,6 @@ ThingsBoard ThingsBoard_client(MQTT_client, MAX_MESSAGE_RECEIVE_SIZE, MAX_MESSAG
 
 // Statuses for provisioning and subscribing
 bool provisionRequestSent = false;
-bool provisionResponseProcessed = false;
 bool rpcSubscribed = false;
 bool sharedAttributeSubscribed = false;
 
@@ -99,6 +108,55 @@ struct Credentials {
 } credentials;
 
 unsigned long _lastConnectAttempt = 0;
+uint8_t _thingsBoardConnectAttempts = 0;
+
+extern void processSwitchState(const JsonVariantConst& json, JsonDocument& response);
+extern void processSharedAttributeUpdate(const JsonObjectConst& json);
+
+bool saveThingsBoardPreferences()
+{
+    Serial.println("Saving device ThingsBoard preferences to flash...");
+    // Open the NVS namespace in read/write mode (false)
+    if (!ThingsBoard_pref.begin(PREFS_NAMESPACE, false)) {
+        Serial.println("Failed to open Preferences namespace for writing");
+        return false;
+    }
+
+    // Put the string value into the NVS with the defined key
+    ThingsBoard_pref.putString(PREFS_DEVICE_ID, credentials.client_id.c_str());
+    ThingsBoard_pref.putString(PREFS_DEVICE_USER, credentials.username.c_str());
+    ThingsBoard_pref.putString(PREFS_DEVICE_PASS, credentials.password.c_str());
+
+    // Close the preferences
+    ThingsBoard_pref.end();
+
+    Serial.println("Device credentials saved to flash.");
+    return true;
+}
+
+bool loadThingsBoardPreferences()
+{
+    Serial.println("Loading device ThingsBoard preferences from flash...");
+    // Open NVS namespace in read-only mode
+    if (!ThingsBoard_pref.begin(PREFS_NAMESPACE, true)) {
+        Serial.println("Failed to open Preferences namespace for reading!");
+        return false;
+    }
+
+    // Load each item. The second argument ("") is the default if the key isn't found.
+    String str;
+    str = ThingsBoard_pref.getString(PREFS_DEVICE_ID, "");
+    credentials.client_id = str.c_str();
+    str = ThingsBoard_pref.getString(PREFS_DEVICE_USER, "");
+    credentials.username = str.c_str();
+    str = ThingsBoard_pref.getString(PREFS_DEVICE_PASS, "");
+    credentials.password = str.c_str();
+
+    // Close the preferences
+    ThingsBoard_pref.end();
+
+    return true;
+}
 
 /// @brief Provision request did not receive a response in the expected amount of microseconds
 void provisionTimedOut()
@@ -149,49 +207,18 @@ void processProvisionResponse(const JsonDocument& json)
     if (ThingsBoard_client.connected()) {
         ThingsBoard_client.disconnect();
     }
+
+    saveThingsBoardPreferences();
+
     _lastConnectAttempt = 0;
-    provisionResponseProcessed = true;
-}
-
-/// @brief Processes function for RPC call "power_set"
-/// JsonVariantConst is a JSON variant, that can be queried using operator[]
-/// See https://arduinojson.org/v5/api/jsonvariant/subscript/ for more details
-/// @param json Data containing the rpc data that was called and its current value
-/// @param response Data containgin the response value, any number, string or json, that should be
-/// sent to the cloud. Useful for getMethods
-void processPowerState(const JsonVariantConst& json, JsonDocument& response)
-{
-    Serial.println("Received the set power method");
-
-    // Process json
-    const bool power_state = json[RPC_POWER_SET_KEY];
-
-    Serial.print("Example power state: ");
-    Serial.println(power_state);
-
-    response.set(22.02);
-}
-
-/// @brief Update callback that will be called as soon as one of the provided shared attributes
-/// changes value, if none are provided we subscribe to any shared attribute change instead
-/// @param json Data containing the shared attributes that were changed and their current value
-void processSharedAttributeUpdate(const JsonObjectConst& json)
-{
-    for (auto it = json.begin(); it != json.end(); ++it) {
-        Serial.println(it->key().c_str());
-        // Shared attributes have to be parsed by their type.
-        Serial.println(it->value().as<const char*>());
-    }
-
-    const size_t jsonSize = Helper::Measure_Json(json);
-    char buffer[jsonSize];
-    serializeJson(json, buffer, jsonSize);
-    Serial.println(buffer);
+    provisionRequestSent = false;
 }
 
 /// @brief Setup ThingsBoard device information
 void ThingsBoard_setup()
 {
+    loadThingsBoardPreferences();
+
     String macUpper = WiFi.macAddress();
     macUpper.toUpperCase();
     String macUCNo = macUpper;
@@ -221,27 +248,30 @@ void ThingsBoard_connect()
     _lastConnectAttempt = millis();
 
     if (!provisionRequestSent) {
-        provisionResponseProcessed = false;
-        rpcSubscribed = false;
-        sharedAttributeSubscribed = false;
+        if (credentials.username.empty()) {
+            rpcSubscribed = false;
+            sharedAttributeSubscribed = false;
 
-        Serial.printf("Connecting to %s for provisioning...\n", ThingsBoard_server.c_str());
-        if (!ThingsBoard_client.connect(ThingsBoard_server.c_str(), "provision",
-                                        ThingsBoard_port)) {
-            Serial.println("Failed to connect");
-            provisionRequestSent = false;
-            return;
+            Serial.printf("Connecting to %s for provisioning...\n", ThingsBoard_server.c_str());
+            if (!ThingsBoard_client.connect(ThingsBoard_server.c_str(), "provision",
+                                            ThingsBoard_port)) {
+                Serial.println("Failed to connect");
+                provisionRequestSent = false;
+                return;
+            }
+
+            // Provision device if provision key and secret are set
+            Serial.println("Sending provisioning request");
+
+            const Provision_Callback provisionCallback(
+                Access_Token(), &processProvisionResponse, ThingsBoard_Provision_Device_Key,
+                ThingsBoard_Provision_Device_Secret, deviceId.c_str(), REQUEST_TIMEOUT_MICROSECONDS,
+                &provisionTimedOut);
+            provisionRequestSent = prov.Provision_Request(provisionCallback);
         }
+    }
 
-        // Provision device if provision key and secret are set
-        Serial.println("Sending provisioning request");
-
-        const Provision_Callback provisionCallback(
-            Access_Token(), &processProvisionResponse, ThingsBoard_Provision_Device_Key,
-            ThingsBoard_Provision_Device_Secret, deviceId.c_str(), REQUEST_TIMEOUT_MICROSECONDS,
-            &provisionTimedOut);
-        provisionRequestSent = prov.Provision_Request(provisionCallback);
-    } else if (provisionResponseProcessed) {
+    if (!credentials.username.empty()) {
         if (!ThingsBoard_client.connected()) {
             rpcSubscribed = false;
             sharedAttributeSubscribed = false;
@@ -252,6 +282,14 @@ void ThingsBoard_connect()
                     ThingsBoard_server.c_str(), credentials.username.c_str(), ThingsBoard_port,
                     credentials.client_id.c_str(), credentials.password.c_str())) {
                 Serial.println("Failed to connect");
+                _thingsBoardConnectAttempts++;
+                if (_thingsBoardConnectAttempts >= THINGSBOARD_ATTEMPS_MAX) {
+                    Serial.println(
+                        "Max ThingsBoard connection attempts reached, "
+                        "do re-provisioning...");
+                    credentials.username = "";
+                    _thingsBoardConnectAttempts = 0;
+                }
                 return;
             } else {
                 // Serial.println("Connected!");
@@ -263,13 +301,16 @@ void ThingsBoard_connect()
             if (!rpcSubscribed) {
                 Serial.println("Subscribing for RPC...");
                 const std::array<RPC_Callback, MAX_RPC_SUBSCRIPTIONS> callbacks = {
-                    // Requires additional memory in the JsonDocument for the JsonDocument that will
+                    // Requires additional memory in the JsonDocument for the JsonDocument that
+                    // will
                     // be copied into the response
-                    RPC_Callback{RPC_POWER_SET_METHOD, processPowerState},
-                    // Requires additional memory in the JsonDocument for 5 key-value pairs that do
+                    RPC_Callback{RPC_SWITCH_SET_METHOD, processSwitchState},
+                    // Requires additional memory in the JsonDocument for 5 key-value pairs that
+                    // do
                     // not copy their value into the JsonDocument itself
                     // RPC_Callback{RPC_TEMPERATURE_METHOD, processTemperatureChange},
-                    // Internal size can be 0, because if we use the JsonDocument as a JsonVariant
+                    // Internal size can be 0, because if we use the JsonDocument as a
+                    // JsonVariant
                     // and then set the value we do not require additional memory
                     // RPC_Callback{RPC_SWITCH_METHOD, processSwitchChange}
                 };
@@ -290,7 +331,8 @@ void ThingsBoard_connect()
 
                 // Shared attributes we want to request from the server
                 constexpr std::array<const char*, MAX_ATTRIBUTES> SUBSCRIBED_SHARED_ATTRIBUTES = {
-                    POWER_STATE_KEY};
+                    SWITCH_STATE_0_KEY, SWITCH_STATE_1_KEY, SWITCH_STATE_2_KEY,
+                    SWITCH_STATE_3_KEY, SWITCH_STATE_4_KEY, SWITCH_STATE_5_KEY};
                 const Shared_Attribute_Callback<MAX_ATTRIBUTES> callback(
                     &processSharedAttributeUpdate, SUBSCRIBED_SHARED_ATTRIBUTES);
                 if (!ThingsBoard_shared_update.Shared_Attributes_Subscribe(callback)) {
@@ -302,6 +344,7 @@ void ThingsBoard_connect()
                 sharedAttributeSubscribed = true;
             }
         }
+        // }
     }
 }
 #endif  // _THINGSBOARD_MANAGER_H
