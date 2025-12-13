@@ -188,8 +188,7 @@ void processSwitchState(const JsonVariantConst& json, JsonDocument& response)
     // Process json
     switch_state[i] = json[sprintf_buffer];
 
-    Serial.printf("Switch %d state: ", i);
-    Serial.println(switch_state[i]);
+    Serial.printf("Switch %s state: %s\n", sprintf_buffer, switch_state[i] ? "true" : "false");
 
     ThingsBoard_client.sendAttributeData(sprintf_buffer, switch_state[i]);
 
