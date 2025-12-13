@@ -173,26 +173,30 @@ void ThingsBoard_task(void* pvParameters)
 /// @brief Processes function for RPC call "switch_set"
 /// JsonVariantConst is a JSON variant, that can be queried using operator[]
 /// See https://arduinojson.org/v5/api/jsonvariant/subscript/ for more details
-/// @param json Data containing the rpc data that was called and its current value
+/// @param params Data containing the rpc data that was called and its current value
 /// @param response Data containgin the response value, any number, string or json, that should be
 /// sent to the cloud. Useful for getMethods
-void processSwitchState(const JsonVariantConst& json, JsonDocument& response)
+void processSwitchState(const JsonVariantConst& params, JsonDocument& response)
 {
     Serial.println("Received the switch set method");
 
-    u8_t i = 0;
+    JsonObjectConst json = params.as<JsonObjectConst>();
 
-    char sprintf_buffer[] = "switch_state_x";
-    sprintf(sprintf_buffer, "switch_state_%d", i);
+    for (JsonPairConst kv : json) {
+        String key = kv.key().c_str();
 
-    // Process json
-    switch_state[i] = json[sprintf_buffer];
+        if (key.startsWith("switch_state_")) {
+            bool state = kv.value().as<bool>();
 
-    Serial.printf("Switch %s state: %s\n", sprintf_buffer, switch_state[i] ? "true" : "false");
+            Serial.printf("Switch %s state: %s\n", key.c_str(), state ? "true" : "false");
 
-    ThingsBoard_client.sendAttributeData(sprintf_buffer, switch_state[i]);
+            int i = key.substring(strlen("switch_state_")).toInt();
+            switch_state[i] = state;
 
-    // response.set(22.02);
+            ThingsBoard_client.sendAttributeData(key.c_str(), switch_state[i]);
+            // response.set(22.02);
+        }
+    }
 }
 
 /// @brief Update callback that will be called as soon as one of the provided shared attributes
