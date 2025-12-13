@@ -90,6 +90,7 @@ ThingsBoard ThingsBoard_client(MQTT_client, MAX_MESSAGE_RECEIVE_SIZE, MAX_MESSAG
 bool provisionRequestSent = false;
 bool rpcSubscribed = false;
 bool sharedAttributeSubscribed = false;
+bool sharedAttributeRequested = false;
 
 // Struct for client connecting after provisioning
 struct Credentials {
@@ -203,6 +204,16 @@ void processProvisionResponse(const JsonDocument& json)
 
     _lastConnectAttempt = 0;
     provisionRequestSent = false;
+}
+
+/// @brief Attribute request did not receive a response in the expected amount of microseconds
+void requestTimedOut()
+{
+    Serial.printf(
+        "Attribute request timed out did not receive a response in (%llu) microseconds. Ensure "
+        "client is connected to the MQTT broker and that the keys actually exist on the target "
+        "device\n",
+        REQUEST_TIMEOUT_MICROSECONDS);
 }
 
 /// @brief Setup ThingsBoard device information
@@ -324,6 +335,25 @@ void ThingsBoard_connect()
 
                 Serial.println("Subscribe done");
                 sharedAttributeSubscribed = true;
+            }
+
+            if (!sharedAttributeRequested && sharedAttributeSubscribed) {
+                Serial.println("Requesting shared attributes...");
+
+                // Shared attributes we want to request from the server
+                constexpr std::array<const char*, MAX_ATTRIBUTES> REQUESTED_SHARED_ATTRIBUTES = {
+                    SWITCH_STATE_0_KEY, SWITCH_STATE_1_KEY, SWITCH_STATE_2_KEY,
+                    SWITCH_STATE_3_KEY, SWITCH_STATE_4_KEY, SWITCH_STATE_5_KEY};
+                const Attribute_Request_Callback<MAX_ATTRIBUTES> sharedCallback(
+                    &processSharedAttributeUpdate, REQUEST_TIMEOUT_MICROSECONDS, &requestTimedOut,
+                    REQUESTED_SHARED_ATTRIBUTES);
+                if (!ThingsBoard_attribute_request.Shared_Attributes_Request(sharedCallback)) {
+                    Serial.println("Failed to request shared attributes");
+                    return;
+                }
+
+                Serial.println("Request done");
+                sharedAttributeRequested = true;
             }
         }
     }
