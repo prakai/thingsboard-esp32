@@ -203,11 +203,10 @@ void processSharedAttributeUpdate(const JsonObjectConst& json)
     for (auto it = json.begin(); it != json.end(); ++it) {
         String key = it->key().c_str();
         if (key.startsWith("switch_state_")) {
-            Serial.println(it->key().c_str());
-            Serial.println(it->value().as<boolean>() ? "true" : "false");
+            Serial.printf("Switch %s state: %s\n", it->key().c_str(),
+                          it->value().as<boolean>() ? "true" : "false");
             int i = key.substring(strlen("switch_state_")).toInt();
             switch_state[i] = it->value().as<boolean>();
-            continue;
         }
     }
 }
