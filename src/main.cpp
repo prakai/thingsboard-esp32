@@ -200,6 +200,7 @@ void processSwitchState(const JsonVariantConst& json, JsonDocument& response)
 /// @param json Data containing the shared attributes that were changed and their current value
 void processSharedAttributeUpdate(const JsonObjectConst& json)
 {
+    Serial.println("Received shared attribute update");
     for (auto it = json.begin(); it != json.end(); ++it) {
         String key = it->key().c_str();
         if (key.startsWith("switch_state_")) {
