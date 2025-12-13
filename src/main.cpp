@@ -98,6 +98,7 @@ void ThingsBoard_task(void* pvParameters)
 
         // WiFi status
         if (WiFi.status() != WL_CONNECTED) {
+            currentThingsBoardConnectionStatus = false;
             continue;
         }
 
