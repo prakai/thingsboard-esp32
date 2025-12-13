@@ -371,6 +371,8 @@ void ThingsBoard_connect()
                 Serial.println("Request done");
                 sharedAttributeRequested = true;
             }
+
+            currentThingsBoardConnectionStatus = ThingsBoard_client.connected();
         }
     }
 }
