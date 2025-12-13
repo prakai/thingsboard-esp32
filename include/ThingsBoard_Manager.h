@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <Arduino_MQTT_Client.h>
 #include <Attribute_Request.h>
+#include <Client_Side_RPC.h>
 #include <Preferences.h>
 #include <Provision.h>
 #include <Server_Side_RPC.h>
@@ -46,6 +47,7 @@ Arduino_MQTT_Client MQTT_client(WiFi_client);
 // ThingsBoard variables and callbacks
 //
 constexpr uint8_t MAX_RPC_SUBSCRIPTIONS = 4U;
+constexpr uint8_t MAX_RPC_REQUEST = 5U;
 constexpr uint8_t MAX_RPC_RESPONSE = 8U;
 constexpr uint8_t MAX_ATTRIBUTE_REQUESTS = 8U;
 constexpr uint8_t MAX_SHARED_ATTRIBUTES_UPDATE = 8U;
@@ -53,9 +55,10 @@ constexpr uint8_t MAX_ATTRIBUTES = 8U;
 
 // Initialize used ThingsBoard APIs
 Provision<> prov;
-Server_Side_RPC<MAX_RPC_SUBSCRIPTIONS, MAX_RPC_RESPONSE> ThingsBoard_rpc;
-Attribute_Request<MAX_ATTRIBUTE_REQUESTS, MAX_ATTRIBUTES> ThingsBoard_attribute_request;
-Shared_Attribute_Update<MAX_SHARED_ATTRIBUTES_UPDATE, MAX_ATTRIBUTES> ThingsBoard_shared_update;
+Client_Side_RPC<MAX_RPC_SUBSCRIPTIONS, MAX_RPC_REQUEST> TB_client_rpc;
+Server_Side_RPC<MAX_RPC_SUBSCRIPTIONS, MAX_RPC_RESPONSE> TB_server_rpc;
+Attribute_Request<MAX_ATTRIBUTE_REQUESTS, MAX_ATTRIBUTES> TB_attribute_request;
+Shared_Attribute_Update<MAX_SHARED_ATTRIBUTES_UPDATE, MAX_ATTRIBUTES> TB_shared_update;
 
 // Provisioning related constants
 constexpr char CREDENTIALS_TYPE[] = "credentialsType";
@@ -78,8 +81,8 @@ constexpr char SWITCH_STATE_3_KEY[] = "switch_state_3";
 constexpr char SWITCH_STATE_4_KEY[] = "switch_state_4";
 constexpr char SWITCH_STATE_5_KEY[] = "switch_state_5";
 
-const std::array<IAPI_Implementation*, 4U> APIs = {
-    &prov, &ThingsBoard_rpc, &ThingsBoard_attribute_request, &ThingsBoard_shared_update};
+const std::array<IAPI_Implementation*, 5U> APIs = {&prov, &TB_client_rpc, &TB_server_rpc,
+                                                   &TB_attribute_request, &TB_shared_update};
 
 // Initialize ThingsBoard instance with the maximum needed buffer size and stack size
 // APIs are registered on main code
@@ -88,7 +91,7 @@ ThingsBoard ThingsBoard_client(MQTT_client, MAX_MESSAGE_RECEIVE_SIZE, MAX_MESSAG
 
 // Statuses for provisioning and subscribing
 bool provisionRequestSent = false;
-bool rpcSubscribed = false;
+bool serverRpcSubscribed = false;
 bool sharedAttributeSubscribed = false;
 bool sharedAttributeRequested = false;
 
@@ -251,8 +254,9 @@ void ThingsBoard_connect()
 
     if (!provisionRequestSent) {
         if (credentials.username.empty()) {
-            rpcSubscribed = false;
+            serverRpcSubscribed = false;
             sharedAttributeSubscribed = false;
+            sharedAttributeRequested = false;
 
             Serial.printf("Connecting to %s for provisioning...\n", ThingsBoard_server.c_str());
             if (!ThingsBoard_client.connect(ThingsBoard_server.c_str(), "provision",
@@ -275,8 +279,9 @@ void ThingsBoard_connect()
 
     if (!credentials.username.empty()) {
         if (!ThingsBoard_client.connected()) {
-            rpcSubscribed = false;
+            serverRpcSubscribed = false;
             sharedAttributeSubscribed = false;
+            sharedAttributeRequested = false;
 
             // Connect to the ThingsBoard server, as the provisioned client
             Serial.printf("Connecting to %s after provision\n", ThingsBoard_server.c_str());
@@ -300,7 +305,7 @@ void ThingsBoard_connect()
         } else {
             currentThingsBoardConnectionStatus = true;
 
-            if (!rpcSubscribed) {
+            if (!serverRpcSubscribed) {
                 Serial.println("Subscribing for RPC...");
                 const std::array<RPC_Callback, MAX_RPC_SUBSCRIPTIONS> callbacks = {
                     // Requires additional memory in the JsonDocument for the JsonDocument that
@@ -310,13 +315,13 @@ void ThingsBoard_connect()
                 // Perform a subscription. All consequent data processing will happen in
                 // processTemperatureChange() and processSwitchChange() functions,
                 // as denoted by callbacks array.
-                if (!ThingsBoard_rpc.RPC_Subscribe(callbacks.cbegin(), callbacks.cend())) {
+                if (!TB_server_rpc.RPC_Subscribe(callbacks.cbegin(), callbacks.cend())) {
                     Serial.println("Failed to subscribe for RPC");
                     return;
                 }
 
                 Serial.println("Subscribe done");
-                rpcSubscribed = true;
+                serverRpcSubscribed = true;
             }
 
             if (!sharedAttributeSubscribed) {
@@ -328,7 +333,7 @@ void ThingsBoard_connect()
                     SWITCH_STATE_3_KEY, SWITCH_STATE_4_KEY, SWITCH_STATE_5_KEY};
                 const Shared_Attribute_Callback<MAX_ATTRIBUTES> callback(
                     &processSharedAttributeUpdate, SUBSCRIBED_SHARED_ATTRIBUTES);
-                if (!ThingsBoard_shared_update.Shared_Attributes_Subscribe(callback)) {
+                if (!TB_shared_update.Shared_Attributes_Subscribe(callback)) {
                     Serial.println("Failed to subscribe for shared attribute updates");
                     return;
                 }
@@ -347,7 +352,7 @@ void ThingsBoard_connect()
                 const Attribute_Request_Callback<MAX_ATTRIBUTES> sharedCallback(
                     &processSharedAttributeUpdate, REQUEST_TIMEOUT_MICROSECONDS, &requestTimedOut,
                     REQUESTED_SHARED_ATTRIBUTES);
-                if (!ThingsBoard_attribute_request.Shared_Attributes_Request(sharedCallback)) {
+                if (!TB_attribute_request.Shared_Attributes_Request(sharedCallback)) {
                     Serial.println("Failed to request shared attributes");
                     return;
                 }
