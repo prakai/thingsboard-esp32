@@ -91,6 +91,7 @@ ThingsBoard ThingsBoard_client(MQTT_client, MAX_MESSAGE_RECEIVE_SIZE, MAX_MESSAG
 
 // Statuses for provisioning and subscribing
 bool provisionRequestSent = false;
+bool clientRpcRequested = false;
 bool serverRpcSubscribed = false;
 bool sharedAttributeSubscribed = false;
 bool sharedAttributeRequested = false;
@@ -212,11 +213,21 @@ void processProvisionResponse(const JsonDocument& json)
 /// @brief Attribute request did not receive a response in the expected amount of microseconds
 void requestTimedOut()
 {
-    Serial.printf(
-        "Attribute request timed out did not receive a response in (%llu) microseconds. Ensure "
-        "client is connected to the MQTT broker and that the keys actually exist on the target "
-        "device\n",
-        REQUEST_TIMEOUT_MICROSECONDS);
+    if (sharedAttributeRequested) {
+        Serial.printf(
+            "Attribute request timed out did not receive a response in (%llu) microseconds. Ensure "
+            "client is connected to the MQTT broker and that the keys actually exist on the target "
+            "device\n",
+            REQUEST_TIMEOUT_MICROSECONDS);
+        sharedAttributeRequested = false;
+    }
+    if (clientRpcRequested) {
+        Serial.printf(
+            "Client RPC request timed out did not receive a response in (%llu) microseconds. "
+            "Ensure client is connected to the MQTT broker\n",
+            REQUEST_TIMEOUT_MICROSECONDS);
+        clientRpcRequested = false;
+    }
 }
 
 /// @brief Setup ThingsBoard device information
