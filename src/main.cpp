@@ -209,8 +209,6 @@ void processSharedAttributeUpdate(const JsonObjectConst& json)
             switch_state[i] = it->value().as<boolean>();
             continue;
         }
-        // Shared attributes have to be parsed by their type.
-        // Serial.println(it->value().as<const char*>());
     }
 }
 
@@ -242,7 +240,6 @@ void button_handler_onPressedFor(void)
     Serial.print("Button button has been pressed for ");
     Serial.print(BUTTON_LONG_PRESS_TIME / 1000);
     Serial.println(" secs!");
-    // ESP.restart();
 }
 
 //
