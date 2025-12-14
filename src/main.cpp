@@ -11,14 +11,20 @@ void ThingsBoard_task(void* pvParameters);
 //
 // Buttons configuration
 //
-#define BUTTON_PIN 9
-EasyButton* button = nullptr;
+#define BUTTON_FLASH_POWER_PIN 9
+// EasyButton* bt_flash_power = nullptr;
+EasyButton bt_flash_power(BUTTON_FLASH_POWER_PIN);
+#define BUTTON_SWITCH4_MODE_PIN 3
+EasyButton bt_switch4_mode(BUTTON_SWITCH4_MODE_PIN);
 
 constexpr uint64_t BUTTON_LONG_PRESS_TIME = 2000;  // 2 seconds
 
-void button_ISR_handler(void);
-void button_handler_onPressed(void);
-void button_handler_onPressedFor(void);
+void bt_flash_power_ISR_handler(void);
+void bt_flash_power_handler_onPressed(void);
+void bt_flash_power_handler_onPressedFor(void);
+void bt_switch4_mode_ISR_handler(void);
+void bt_switch4_mode_handler_onPressed(void);
+void bt_switch4_mode_handler_onPressedFor(void);
 
 bool switch_state[6] = {false, false, false, false, false, false};
 
@@ -30,12 +36,24 @@ void setup()
     Serial.begin(SERIAL_BAUDRATE);
     Serial.println();
 
-    button = new EasyButton(BUTTON_PIN);
-    button->begin();
-    button->onPressed(button_handler_onPressed);
-    button->onPressedFor(BUTTON_LONG_PRESS_TIME, button_handler_onPressedFor);
-    if (button->supportsInterrupt()) {
-        button->enableInterrupt(button_ISR_handler);
+    // bt_flash_power = new EasyButton(BUTTON_FLASH_POWER_PIN);
+    // bt_flash_power->begin();
+    // bt_flash_power->onPressed(bt_flash_power_handler_onPressed);
+    // bt_flash_power->onPressedFor(BUTTON_LONG_PRESS_TIME, bt_flash_power_handler_onPressedFor);
+    // if (bt_flash_power->supportsInterrupt()) {
+    //     bt_flash_power->enableInterrupt(bt_flash_power_ISR_handler);
+    // }
+    bt_flash_power.begin();
+    bt_flash_power.onPressed(bt_flash_power_handler_onPressed);
+    bt_flash_power.onPressedFor(BUTTON_LONG_PRESS_TIME, bt_flash_power_handler_onPressedFor);
+    if (bt_flash_power.supportsInterrupt()) {
+        bt_flash_power.enableInterrupt(bt_flash_power_ISR_handler);
+    }
+    bt_switch4_mode.begin();
+    bt_switch4_mode.onPressed(bt_switch4_mode_handler_onPressed);
+    bt_switch4_mode.onPressedFor(BUTTON_LONG_PRESS_TIME, bt_switch4_mode_handler_onPressedFor);
+    if (bt_switch4_mode.supportsInterrupt()) {
+        bt_switch4_mode.enableInterrupt(bt_switch4_mode_ISR_handler);
     }
 
     // Create tasks for WiFi
@@ -219,11 +237,12 @@ void processSharedAttributeUpdate(const JsonObjectConst& json)
 //
 // Button handling
 //
-void button_ISR_handler(void)
+void bt_flash_power_ISR_handler(void)
 {
-    button->read();
+    // bt_flash_power->read();
+    bt_flash_power.read();
 }
-void button_handler_onPressed(void)
+void bt_flash_power_handler_onPressed(void)
 {
     Serial.println("Button button has been pressed!");
 
@@ -239,7 +258,33 @@ void button_handler_onPressed(void)
         ThingsBoard_client.sendAttributeData(sprintf_buffer, switch_state[i]);
     }
 }
-void button_handler_onPressedFor(void)
+void bt_flash_power_handler_onPressedFor(void)
+{
+    Serial.print("Button button has been pressed for ");
+    Serial.print(BUTTON_LONG_PRESS_TIME / 1000);
+    Serial.println(" secs!");
+}
+void bt_switch4_mode_ISR_handler(void)
+{
+    bt_switch4_mode.read();
+}
+void bt_switch4_mode_handler_onPressed(void)
+{
+    Serial.println("Button button has been pressed!");
+
+    if (currentThingsBoardConnectionStatus) {
+        u8_t i = 1;
+        switch_state[i] = !switch_state[i];
+
+        char sprintf_buffer[] = "switch_state_x";
+        sprintf(sprintf_buffer, "switch_state_%d", i);
+
+        Serial.printf("Send %s: ", sprintf_buffer);
+        Serial.println(switch_state[i]);
+        ThingsBoard_client.sendAttributeData(sprintf_buffer, switch_state[i]);
+    }
+}
+void bt_switch4_mode_handler_onPressedFor(void)
 {
     Serial.print("Button button has been pressed for ");
     Serial.print(BUTTON_LONG_PRESS_TIME / 1000);
@@ -251,8 +296,17 @@ void button_handler_onPressedFor(void)
 //
 void loop()
 {
-    if (button->supportsInterrupt()) {
-        button->update();
+    // if (bt_flash_power->supportsInterrupt()) {
+    //     bt_flash_power->update();
+    // }
+    if (bt_flash_power.supportsInterrupt()) {
+        bt_flash_power.update();
+    }
+    // if (bt_switch4_mode->supportsInterrupt()) {
+    //     bt_switch4_mode->update();
+    // }
+    if (bt_switch4_mode.supportsInterrupt()) {
+        bt_switch4_mode.update();
     }
 
     delay(10);
