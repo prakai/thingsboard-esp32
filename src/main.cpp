@@ -28,6 +28,10 @@ void bt_switch4_mode_handler_onPressedFor(void);
 
 bool switch_state[6] = {false, false, false, false, false, false};
 
+#ifdef BOARD_SUPERMINI
+#define LED_BUILTIN_PIN 8
+#endif
+
 //
 // Main setup
 //
@@ -36,13 +40,6 @@ void setup()
     Serial.begin(SERIAL_BAUDRATE);
     Serial.println();
 
-    // bt_flash_power = new EasyButton(BUTTON_FLASH_POWER_PIN);
-    // bt_flash_power->begin();
-    // bt_flash_power->onPressed(bt_flash_power_handler_onPressed);
-    // bt_flash_power->onPressedFor(BUTTON_LONG_PRESS_TIME, bt_flash_power_handler_onPressedFor);
-    // if (bt_flash_power->supportsInterrupt()) {
-    //     bt_flash_power->enableInterrupt(bt_flash_power_ISR_handler);
-    // }
     bt_flash_power.begin();
     bt_flash_power.onPressed(bt_flash_power_handler_onPressed);
     bt_flash_power.onPressedFor(BUTTON_LONG_PRESS_TIME, bt_flash_power_handler_onPressedFor);
@@ -55,6 +52,11 @@ void setup()
     if (bt_switch4_mode.supportsInterrupt()) {
         bt_switch4_mode.enableInterrupt(bt_switch4_mode_ISR_handler);
     }
+
+#ifdef BOARD_SUPERMINI
+    pinMode(LED_BUILTIN_PIN, OUTPUT);
+    digitalWrite(LED_BUILTIN_PIN, HIGH);  // Turn off the LED
+#endif
 
     // Create tasks for WiFi
     xTaskCreate(WiFi_task,   /* Task function. */
@@ -211,8 +213,13 @@ void processSwitchState(const JsonVariantConst& params, JsonDocument& response)
             int i = key.substring(strlen("switch_state_")).toInt();
             switch_state[i] = state;
 
+#ifdef BOARD_SUPERMINI
+            if (i == 0) {
+                digitalWrite(LED_BUILTIN_PIN, switch_state[i] ? LOW : HIGH);
+            }
+#endif
             ThingsBoard_client.sendAttributeData(key.c_str(), switch_state[i]);
-            // response.set(22.02);
+            response.set(switch_state[i]);
         }
     }
 }
@@ -230,6 +237,11 @@ void processSharedAttributeUpdate(const JsonObjectConst& json)
                           it->value().as<boolean>() ? "true" : "false");
             int i = key.substring(strlen("switch_state_")).toInt();
             switch_state[i] = it->value().as<boolean>();
+#ifdef BOARD_SUPERMINI
+            if (i == 0) {
+                digitalWrite(LED_BUILTIN_PIN, switch_state[i] ? LOW : HIGH);
+            }
+#endif
         }
     }
 }
@@ -296,15 +308,9 @@ void bt_switch4_mode_handler_onPressedFor(void)
 //
 void loop()
 {
-    // if (bt_flash_power->supportsInterrupt()) {
-    //     bt_flash_power->update();
-    // }
     if (bt_flash_power.supportsInterrupt()) {
         bt_flash_power.update();
     }
-    // if (bt_switch4_mode->supportsInterrupt()) {
-    //     bt_switch4_mode->update();
-    // }
     if (bt_switch4_mode.supportsInterrupt()) {
         bt_switch4_mode.update();
     }
