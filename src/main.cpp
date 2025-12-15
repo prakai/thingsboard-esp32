@@ -9,6 +9,11 @@ void WiFi_task(void* pvParameters);
 void ThingsBoard_task(void* pvParameters);
 
 //
+// ThinkgsBoard timings
+//
+constexpr uint64_t THINGSBOARD_ATTRIBUTE__SEND_INTERVAL = 5 * 60 * 1000;  // 5 minute
+constexpr uint64_t THINGSBOARD_TELEMETRY_SEND_INTERVAL = 30000;           // 30 seconds
+//
 // Buttons configuration
 //
 #define BUTTON_FLASH_POWER_PIN 9
@@ -142,8 +147,11 @@ void ThingsBoard_task(void* pvParameters)
             if (!currentThingsBoardConnectionStatus) {
                 _lastSentTelemitry = 0;
             } else {
-                if (_lastSentAttributes == 0) {  //|| millis() - _lastSentAttributes > 60000) {
+                if ((_lastSentAttributes == 0 ||
+                     millis() - _lastSentAttributes > THINGSBOARD_ATTRIBUTE__SEND_INTERVAL) &&
+                    sharedAttributeSubscribed) {
                     _lastSentAttributes = millis();
+
                     String hwVersion = DEVICE_HW_VERSION;
                     String hwSerial = "SO-0001";
                     String fwVersion = DEVICE_SW_VERSION;
@@ -159,6 +167,8 @@ void ThingsBoard_task(void* pvParameters)
                     Serial.print(WiFi.macAddress());
                     Serial.print(", ");
                     Serial.println(WiFi.localIP());
+
+                    // Send device attributes
                     ThingsBoard_client.sendAttributeData("hwVersion", hwVersion.c_str());
                     ThingsBoard_client.sendAttributeData("hwSerial", hwSerial.c_str());
                     ThingsBoard_client.sendAttributeData("fwVersion", fwVersion.c_str());
@@ -167,9 +177,20 @@ void ThingsBoard_task(void* pvParameters)
                                                          String(WiFi.macAddress()).c_str());
                     ThingsBoard_client.sendAttributeData("ipAddress",
                                                          String(WiFi.localIP().toString()).c_str());
+
+                    // Send switch states
+                    ThingsBoard_client.sendAttributeData("switch_state_0", switch_state[0]);
+                    ThingsBoard_client.sendAttributeData("switch_state_1", switch_state[1]);
+                    ThingsBoard_client.sendAttributeData("switch_state_2", switch_state[2]);
+                    ThingsBoard_client.sendAttributeData("switch_state_3", switch_state[3]);
+                    ThingsBoard_client.sendAttributeData("switch_state_4", switch_state[4]);
+                    ThingsBoard_client.sendAttributeData("switch_state_5", switch_state[5]);
                 }
-                if (_lastSentTelemitry == 0 || millis() - _lastSentTelemitry > 30000) {
+
+                if (_lastSentTelemitry == 0 ||
+                    millis() - _lastSentTelemitry > THINGSBOARD_TELEMETRY_SEND_INTERVAL) {
                     _lastSentTelemitry = millis();
+
                     float temperature = 24.0 + (rand() % 100) / 10.0;
                     float humidity = 50.0 + (rand() % 100) / 10.0;
                     Serial.print("Send telemetry: ");
