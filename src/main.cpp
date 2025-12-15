@@ -178,6 +178,8 @@ void ThingsBoard_task(void* pvParameters)
                     ThingsBoard_client.sendAttributeData("ipAddress",
                                                          String(WiFi.localIP().toString()).c_str());
 
+                    Serial.println("Send switch states");
+
                     // Send switch states
                     ThingsBoard_client.sendAttributeData("switch_state_0", switch_state[0]);
                     ThingsBoard_client.sendAttributeData("switch_state_1", switch_state[1]);
