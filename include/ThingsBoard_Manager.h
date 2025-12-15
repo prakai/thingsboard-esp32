@@ -109,7 +109,8 @@ struct Credentials {
 unsigned long _lastConnectAttempt = 0;
 uint8_t _thingsBoardConnectAttempts = 0;
 
-extern void processSwitchState(const JsonVariantConst& json, JsonDocument& response);
+// ThingsBoard callbacks forward declarations
+extern void processSwitchStateRPC(const JsonVariantConst& json, JsonDocument& response);
 extern void processSharedAttributeUpdate(const JsonObjectConst& json);
 
 bool saveThingsBoardPreferences()
@@ -324,7 +325,7 @@ void ThingsBoard_connect()
                 const std::array<RPC_Callback, MAX_RPC_SUBSCRIPTIONS> callbacks = {
                     // Requires additional memory in the JsonDocument for the JsonDocument that
                     // will be copied into the response
-                    RPC_Callback{RPC_SWITCH_SET_METHOD, processSwitchState},
+                    RPC_Callback{RPC_SWITCH_SET_METHOD, processSwitchStateRPC},
                 };
                 // Perform a subscription. All consequent data processing will happen in
                 // processTemperatureChange() and processSwitchChange() functions,

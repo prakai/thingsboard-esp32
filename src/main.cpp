@@ -219,7 +219,7 @@ void ThingsBoard_task(void* pvParameters)
 /// @param params Data containing the rpc data that was called and its current value
 /// @param response Data containgin the response value, any number, string or json, that should be
 /// sent to the cloud. Useful for getMethods
-void processSwitchState(const JsonVariantConst& params, JsonDocument& response)
+void processSwitchStateRPC(const JsonVariantConst& params, JsonDocument& response)
 {
     Serial.println("Received the switch set method");
 
