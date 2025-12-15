@@ -15,16 +15,19 @@
 
 #include "Configuration.h"
 
+constexpr char* DEVICE_NAME_PREFIX = "Smart Office";
+constexpr char* DEVICE_ID_PREFIX = "smartoffice";
+
 String deviceName = "";
 String deviceId = "";
 String deviceMac = "";
 String deviceModel = "";
 
 Preferences ThingsBoard_pref;
-const char* PREFS_NAMESPACE = "tb_prefs";
-const char* PREFS_DEVICE_ID = "dev_id";
-const char* PREFS_DEVICE_USER = "dev_user";
-const char* PREFS_DEVICE_PASS = "dev_pass";
+constexpr char* PREFS_NAMESPACE = "tb_prefs";
+constexpr char* PREFS_DEVICE_ID = "dev_id";
+constexpr char* PREFS_DEVICE_USER = "dev_user";
+constexpr char* PREFS_DEVICE_PASS = "dev_pass";
 
 // Initialize underlying client, used to establish a connection
 WiFiClient WiFi_client;
@@ -49,8 +52,8 @@ Arduino_MQTT_Client MQTT_client(WiFi_client);
 constexpr uint8_t MAX_RPC_SUBSCRIPTIONS = 4U;
 constexpr uint8_t MAX_RPC_REQUEST = 5U;
 constexpr uint8_t MAX_RPC_RESPONSE = 8U;
-constexpr uint8_t MAX_ATTRIBUTE_REQUESTS = 8U;
-constexpr uint8_t MAX_SHARED_ATTRIBUTES_UPDATE = 8U;
+constexpr uint8_t MAX_ATTRIBUTE_REQUESTS = 20U;
+constexpr uint8_t MAX_SHARED_ATTRIBUTES_UPDATE = 20U;
 constexpr uint8_t MAX_ATTRIBUTES = 8U;
 
 // Initialize used ThingsBoard APIs
@@ -242,10 +245,10 @@ void ThingsBoard_setup()
     String macLCNo = macUCNo;
     macLCNo.toLowerCase();
 
-    deviceName = "Smart Office - " + macUCNo;  // upper, no colons
-    deviceId = "smartoffice-" + macLCNo;       // lower, no colons
-    deviceMac = macUpper;                      // upper, with colons
-    deviceModel = "Smart Office " + String(DEVICE_MODEL);
+    deviceName = String(DEVICE_NAME_PREFIX) + " " + macUCNo;  // upper, no colons
+    deviceId = String(DEVICE_ID_PREFIX) + " - " + macLCNo;    // lower, no colons
+    deviceMac = macUpper;                                     // upper, with colons
+    deviceModel = String(DEVICE_NAME_PREFIX) + " " + String(DEVICE_MODEL);
 
     currentThingsBoardConnectionStatus = ThingsBoard_client.connected();
     lastThingsBoardConnectionStatus = ThingsBoard_client.connected();
